@@ -1,0 +1,35 @@
+syntax = "proto3";
+option go_package = "github.com/virsel/SP-verteilte-Systeme/event";
+
+package event;
+
+// Event definition
+service Event {
+    // Get Event - unary
+    rpc GetEvent(GetEventFilter) returns (GetEventResponse) {}
+
+    // Create new Event - unary
+    rpc CreateEvent(EventRequest) returns (EventResponse) {}
+
+    // Get all Event - server streaming
+    rpc GetEvents(GetEventFilter) returns (stream GetEventResponse) {}
+}
+
+// Request massage for CreateEvent
+message EventRequest {
+    string name = 2;
+}
+
+message EventResponse {
+    string id = 1;
+    bool success = 2;
+}
+
+message GetEventFilter {
+    string id = 1;
+}
+
+message GetEventResponse {
+    string id = 1;
+    string name = 2;
+}

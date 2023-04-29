@@ -1,0 +1,77 @@
+version: '3.9'
+services:
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres-product-ordering-system
+    ports: 
+      - 5432:5432
+    environment:
+    - POSTGRES_PASSWORD=postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    volumes:
+      - ./.data/postgras:/var/lib/postgresql/data
+
+  nats:
+    container_name: nats-js
+    image: nats:2.9-alpine
+    ports:
+      - "4222:4222"
+    command: "-js --sd /data --http_port 8222"
+    volumes:
+      - ./.data/nats:/data
+
+  order-service:
+    build:
+      context: ./build
+      args:
+        SERVICE: order-svc
+    image: ghcr.io/ragul28/grpc-event-stream/order-svc
+    container_name: order-svc
+    ports:
+      - 8080:8080
+    environment:
+    - PORT=8080
+    - NATS_URL=nats://nats:4222
+    - DB_HOST=postgres
+    - DB_NAME=postgres
+    - DB_USER=postgres
+    - DB_PASSWORD=postgres
+    depends_on: 
+      - postgres
+      - nats
+
+  payment-service:
+    build:
+      context: ./build
+      args:
+        SERVICE: payment-svc
+    image: ghcr.io/ragul28/grpc-event-stream/payment-svc
+    container_name: payment-svc
+    ports:
+      - 8081:8080
+    environment:
+    - PORT=8080
+    - NATS_URL=nats://nats:4222
+    depends_on: 
+      - nats
+
+  gateway:
+    build:
+      context: ./build
+      args:
+        SERVICE: gateway
+    image: ghcr.io/ragul28/grpc-event-stream/gateway
+    container_name: gateway
+    ports:
+      - 8082:8080
+    environment:
+      PORT: 8080
+      ORDER_GRPC_ADDR: "order-service:8080"
+    depends_on: 
+      - order-service
